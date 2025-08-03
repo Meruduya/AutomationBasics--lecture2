@@ -4,7 +4,6 @@ on: [push, pull_request]
 
 jobs:
   build:
-
     runs-on: ubuntu-latest
 
     steps:
@@ -19,9 +18,16 @@ jobs:
       - name: Grant execute permission for gradlew
         run: chmod +x gradlew
 
-      - name: Start SUT
-        # Запускаем ваш учебный сервис в фоне
-        run: java -jar ./artifacts/app-mbank.jar &
+      - name: Start SUT (app-mbank.jar) in background
+        run: java -Duser.language=en -Duser.country=US -jar ./artifacts/app-mbank.jar &
 
-      - name: Build and test with Gradle
+      - name: Wait for SUT to be ready
+        run: |
+          for i in {1..15}; do
+            curl --fail http://localhost:9999/api/v1/demo/accounts && break
+            echo "Waiting for SUT to start… ($i)"
+            sleep 2
+          done
+
+      - name: Run tests
         run: ./gradlew test --info
