@@ -6,29 +6,39 @@ on:
   pull_request:
     branches: [ main ]
 
+permissions:
+  contents: read
+
 jobs:
   build:
     runs-on: ubuntu-latest
 
     steps:
-      - uses: actions/checkout@v2
+      # 1) checkout
+      - uses: actions/checkout@v3
 
-      - name: Set up JDK 11
-        uses: actions/setup-java@v2
+      # 2) setup JDK 11 + cache Gradle deps
+      - name: Set up JDK 11 and cache Gradle
+        uses: actions/setup-java@v3
         with:
+          distribution: temurin
           java-version: '11'
-          distribution: 'adopt'
+          cache: gradle
 
+      # 3) make wrapper executable
       - name: Make gradlew executable
         run: chmod +x gradlew
 
+      # 4) build JAR
       - name: Build project JAR
         run: ./gradlew clean assemble --info
 
+      # 5) start SUT
       - name: Start SUT in background
         run: |
           java -jar artifacts/app-mbank.jar &
 
+      # 6) wait for SUT
       - name: Wait for SUT to be ready
         run: |
           for i in {1..10}; do
@@ -37,5 +47,6 @@ jobs:
             sleep 2
           done
 
+      # 7) run tests
       - name: Run tests
         run: ./gradlew test --info --stacktrace -Dselenide.headless=true
